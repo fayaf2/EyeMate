@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Voice Recognition Web App</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background-color: #f0f0f0;
+            cursor: pointer; /* Indicate clickable area */
+            text-align: center;
+        }
+
+        #response {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+    </style>
+</head>
+<body>
+    <div>
+        <h1>Voice Recognition Web App</h1>
+        <p>Click anywhere to start listening.</p>
+        <p id="response"></p>
+    </div>
+
+    <script>
+        let hasSpoken = false;
+
+        // Function to speak text
+        function speakText(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            speechSynthesis.speak(utterance);
+        }
+
+        // Start listening when anywhere on the screen is clicked
+        document.body.onclick = function() {
+            if (!hasSpoken) {
+                // Announce activation once when page loads
+                speakText("Let's chat is activated.");
+                hasSpoken = true;  // Set flag to true after speaking
+            }
+
+            if ('webkitSpeechRecognition' in window) {
+                const recognition = new webkitSpeechRecognition();
+                recognition.lang = 'en-US';
+                recognition.continuous = true;
+
+                recognition.start();
+
+                recognition.onresult = function(event) {
+                    const command = event.results[event.results.length - 1][0].transcript.trim().toLowerCase();
+                    document.getElementById('response').innerText = `You said: ${command}`;
+
+                    // Check for exit command
+                    if (command === "exit") {
+                        window.location.href = "https://sjftech.co/chat/index.html";
+                        return;
+                    }
+
+                    fetch(`/generate_content/${encodeURIComponent(command)}`)
+                        .then(response => response.json())
+                        .then(data => {
+                            const generatedContent = data.content;
+                            document.getElementById('response').innerText += `\nGenerated Content: ${generatedContent}`;
+
+                            const firstSentence = generatedContent.split('.')[0];
+                            speakText(firstSentence);
+                        })
+                        .catch(error => console.error('Error:', error));
+                };
+
+                recognition.onerror = function(event) {
+                    console.error('Error occurred in recognition:', event.error);
+                };
+            } else {
+                alert("Sorry, your browser does not support the Web Speech API.");
+            }
+        };
+    </script>
+</body>
+</html>
